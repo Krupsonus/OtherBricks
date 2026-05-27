@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session, joinedload
 
 from models.category import Category
+from models.price_offer import PriceOffer
 from models.product import Product
 
 MAX_PAGE_SIZE = 20
@@ -62,3 +63,13 @@ def get_product_by_id(db: Session, product_id: int) -> Product | None:
 def get_all_categories(db: Session) -> list[Category]:
     """Return all categories ordered by name."""
     return db.query(Category).order_by(Category.name).all()
+
+
+def get_price_offers(db: Session, product_id: int) -> list[PriceOffer]:
+    """Return all external price offers for a product, sorted by price ascending."""
+    return (
+        db.query(PriceOffer)
+        .filter(PriceOffer.product_id == product_id)
+        .order_by(PriceOffer.price)
+        .all()
+    )

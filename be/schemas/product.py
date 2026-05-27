@@ -1,4 +1,6 @@
-from pydantic import BaseModel, ConfigDict
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class CategoryOut(BaseModel):
@@ -33,3 +35,21 @@ class ProductListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class PriceOfferOut(BaseModel):
+    """External shop price offer for a product."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    shop_name: str
+    shop_url: str
+    price: float
+    updated_at: str
+
+    @field_validator("updated_at", mode="before")
+    @classmethod
+    def stringify_dt(cls, v: datetime | str) -> str:
+        if isinstance(v, datetime):
+            return v.isoformat()
+        return str(v)
