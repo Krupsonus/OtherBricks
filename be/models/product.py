@@ -27,3 +27,6 @@ class Product(Base):
     )
 
     category: Mapped["Category | None"] = relationship("Category", back_populates="products")
+    price_offers: Mapped[list["PriceOffer"]] = relationship(  # noqa: F821
+        "PriceOffer", back_populates="product", cascade="all, delete-orphan"
+    )
