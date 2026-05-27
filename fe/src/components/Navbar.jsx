@@ -23,6 +23,13 @@ export default function Navbar() {
           </Link>
 
           <div className="flex items-center gap-4">
+            <Link
+              to="/products"
+              className="text-sm text-gray-600 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded px-2 py-1"
+            >
+              Catalogue
+            </Link>
+
             {user ? (
               <>
                 <span className="text-sm text-gray-600">

@@ -3,6 +3,8 @@ import { AuthProvider } from './context/AuthContext'
 import Navbar from './components/Navbar'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import CatalogPage from './pages/CatalogPage'
+import ProductPage from './pages/ProductPage'
 
 function App() {
   return (
@@ -25,6 +27,8 @@ function App() {
           />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/products" element={<CatalogPage />} />
+          <Route path="/products/:id" element={<ProductPage />} />
         </Routes>
       </div>
     </AuthProvider>
