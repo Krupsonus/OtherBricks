@@ -117,7 +117,7 @@ class TestSeedScript:
         mock_query.first.return_value = None  # admin does not exist
 
         import seed
-        seed.seed(mock_db)
+        seed.seed_admin(mock_db)  # test only the admin seeder in isolation
 
         mock_db.add.assert_called_once()
         mock_db.commit.assert_called_once()
@@ -132,7 +132,7 @@ class TestSeedScript:
         mock_db.add.side_effect = lambda obj: added_objects.append(obj)
 
         import seed
-        seed.seed(mock_db)
+        seed.seed_admin(mock_db)  # test only the admin seeder in isolation
 
         assert len(added_objects) == 1
         admin = added_objects[0]
