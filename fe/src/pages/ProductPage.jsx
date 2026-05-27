@@ -1,18 +1,22 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getProduct } from '../api/products'
+import { getProduct, getPriceOffers } from '../api/products'
 
-/** Full product detail page. */
+/** Full product detail page with external price comparison. */
 export default function ProductPage() {
   const { id } = useParams()
   const [product, setProduct] = useState(null)
+  const [offers, setOffers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
     setLoading(true)
-    getProduct(id)
-      .then((r) => setProduct(r.data))
+    Promise.all([getProduct(id), getPriceOffers(id)])
+      .then(([productRes, offersRes]) => {
+        setProduct(productRes.data)
+        setOffers(offersRes.data)
+      })
       .catch((err) => {
         setError(err.response?.status === 404 ? 'Product not found.' : 'Failed to load product.')
       })
@@ -37,6 +41,8 @@ export default function ProductPage() {
   }
 
   const { name, manufacturer, description, piece_count, min_age, base_price, stock_quantity, image_url, category } = product
+
+  const cheapest = offers.length > 0 ? offers[0] : null
 
   return (
     <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -78,7 +84,7 @@ export default function ProductPage() {
               <dd className="font-semibold text-gray-800">{min_age ? `${min_age}+` : '—'}</dd>
             </div>
             <div className="bg-gray-50 rounded p-3">
-              <dt className="text-gray-500 text-xs mb-0.5">Price</dt>
+              <dt className="text-gray-500 text-xs mb-0.5">Our price</dt>
               <dd className="font-semibold text-gray-800 text-lg">${Number(base_price).toFixed(2)}</dd>
             </div>
             <div className="bg-gray-50 rounded p-3">
@@ -90,6 +96,56 @@ export default function ProductPage() {
           </dl>
         </div>
       </article>
+
+      {/* Price comparison */}
+      <section className="mt-6" aria-label="Price comparison">
+        <h2 className="text-lg font-semibold text-gray-800 mb-3">Compare prices</h2>
+
+        {offers.length === 0 ? (
+          <p className="text-sm text-gray-500 py-6 text-center bg-white rounded-lg border border-gray-200">
+            No external price offers available for this product.
+          </p>
+        ) : (
+          <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100">
+            {offers.map((offer, idx) => (
+              <div
+                key={offer.id}
+                className="flex items-center justify-between px-4 py-3 gap-4"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  {idx === 0 && (
+                    <span className="flex-shrink-0 text-xs font-medium bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                      Best price
+                    </span>
+                  )}
+                  <span className="text-sm font-medium text-gray-800 truncate">{offer.shop_name}</span>
+                </div>
+
+                <div className="flex items-center gap-4 flex-shrink-0">
+                  <span className={`text-lg font-bold ${idx === 0 ? 'text-green-700' : 'text-gray-800'}`}>
+                    ${Number(offer.price).toFixed(2)}
+                  </span>
+                  <a
+                    href={offer.shop_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    aria-label={`Buy at ${offer.shop_name} for $${Number(offer.price).toFixed(2)}`}
+                  >
+                    Buy
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {cheapest && (
+          <p className="mt-2 text-xs text-gray-400 text-right">
+            Prices updated: {new Date(cheapest.updated_at).toLocaleDateString()}
+          </p>
+        )}
+      </section>
     </main>
   )
 }
