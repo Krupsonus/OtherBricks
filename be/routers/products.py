@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from database import get_db
-from schemas.product import CategoryOut, ProductListResponse, ProductOut
+from schemas.product import CategoryOut, PriceOfferOut, ProductListResponse, ProductOut
 from services.product_service import (
     get_all_categories,
+    get_price_offers,
     get_product_by_id,
     get_products,
 )
@@ -56,3 +57,12 @@ def get_product(product_id: int, db: Session = Depends(get_db)):
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
     return product
+
+
+@router.get("/products/{product_id}/offers", response_model=list[PriceOfferOut])
+def list_price_offers(product_id: int, db: Session = Depends(get_db)):
+    """Return all external price offers for a product, sorted cheapest first."""
+    product = get_product_by_id(db, product_id)
+    if not product:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+    return get_price_offers(db, product_id)
