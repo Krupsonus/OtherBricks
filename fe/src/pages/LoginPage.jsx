@@ -22,10 +22,13 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const { data } = await login(form)
+      // Store token before getMe() so the Axios interceptor can attach it
+      localStorage.setItem('token', data.access_token)
       const { data: userData } = await getMe()
       loginUser(data.access_token, userData)
       navigate('/')
     } catch (err) {
+      localStorage.removeItem('token')
       setError(err.response?.data?.detail ?? 'Login failed. Please try again.')
     } finally {
       setLoading(false)
