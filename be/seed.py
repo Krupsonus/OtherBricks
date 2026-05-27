@@ -209,9 +209,88 @@ def seed_catalog(db: Session) -> None:
     print(f"Seed complete: {len(categories)} categories and {len(products)} products created.")
 
 
+def seed_price_offers(db: Session) -> None:
+    """Add sample external price offers for a selection of products."""
+    from models.price_offer import PriceOffer
+    from models.product import Product
+
+    if db.query(PriceOffer).first():
+        print("Price offers already seeded — skipping.")
+        return
+
+    # Pick a handful of products to demonstrate price comparison
+    names = [
+        "COBI Panzer IV Ausf. G",
+        "CaDA Eiffel Tower",
+        "Mega Construx Porsche 911 Turbo S",
+        "CaDA Space Shuttle Discovery",
+        "CaDA Medieval Castle",
+        "COBI Titanic",
+    ]
+    products = {
+        p.name: p
+        for p in db.query(Product).filter(Product.name.in_(names)).all()
+    }
+
+    offers = []
+    if p := products.get("COBI Panzer IV Ausf. G"):
+        offers += [
+            PriceOffer(product_id=p.id, shop_name="BrickLink",
+                       shop_url="https://www.bricklink.com", price=84.50),
+            PriceOffer(product_id=p.id, shop_name="Smyths Toys",
+                       shop_url="https://www.smythstoys.com", price=92.00),
+            PriceOffer(product_id=p.id, shop_name="Amazon",
+                       shop_url="https://www.amazon.com", price=87.99),
+        ]
+    if p := products.get("CaDA Eiffel Tower"):
+        offers += [
+            PriceOffer(product_id=p.id, shop_name="CADA Official",
+                       shop_url="https://www.cada-block.com", price=119.99),
+            PriceOffer(product_id=p.id, shop_name="eBay",
+                       shop_url="https://www.ebay.com", price=125.00),
+        ]
+    if p := products.get("Mega Construx Porsche 911 Turbo S"):
+        offers += [
+            PriceOffer(product_id=p.id, shop_name="Mattel Shop",
+                       shop_url="https://www.mattel.com", price=199.99),
+            PriceOffer(product_id=p.id, shop_name="Amazon",
+                       shop_url="https://www.amazon.com", price=189.95),
+            PriceOffer(product_id=p.id, shop_name="Zavvi",
+                       shop_url="https://www.zavvi.com", price=209.99),
+        ]
+    if p := products.get("CaDA Space Shuttle Discovery"):
+        offers += [
+            PriceOffer(product_id=p.id, shop_name="CADA Official",
+                       shop_url="https://www.cada-block.com", price=94.99),
+            PriceOffer(product_id=p.id, shop_name="AliExpress",
+                       shop_url="https://www.aliexpress.com", price=79.99),
+        ]
+    if p := products.get("CaDA Medieval Castle"):
+        offers += [
+            PriceOffer(product_id=p.id, shop_name="CADA Official",
+                       shop_url="https://www.cada-block.com", price=179.99),
+            PriceOffer(product_id=p.id, shop_name="BrickLink",
+                       shop_url="https://www.bricklink.com", price=175.00),
+            PriceOffer(product_id=p.id, shop_name="Amazon",
+                       shop_url="https://www.amazon.com", price=185.49),
+        ]
+    if p := products.get("COBI Titanic"):
+        offers += [
+            PriceOffer(product_id=p.id, shop_name="COBI Official",
+                       shop_url="https://cobi.pl", price=104.99),
+            PriceOffer(product_id=p.id, shop_name="Smyths Toys",
+                       shop_url="https://www.smythstoys.com", price=109.99),
+        ]
+
+    db.add_all(offers)
+    db.commit()
+    print(f"Seed complete: {len(offers)} price offers created.")
+
+
 def seed(db: Session) -> None:
     seed_admin(db)
     seed_catalog(db)
+    seed_price_offers(db)
 
 
 if __name__ == "__main__":
