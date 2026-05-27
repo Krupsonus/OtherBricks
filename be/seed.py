@@ -210,7 +210,7 @@ def seed_catalog(db: Session) -> None:
 
 
 def seed_price_offers(db: Session) -> None:
-    """Add sample external price offers for a selection of products."""
+    """Add sample external price offers for all products."""
     from models.price_offer import PriceOffer
     from models.product import Product
 
@@ -218,70 +218,110 @@ def seed_price_offers(db: Session) -> None:
         print("Price offers already seeded — skipping.")
         return
 
-    # Pick a handful of products to demonstrate price comparison
-    names = [
-        "COBI Panzer IV Ausf. G",
-        "CaDA Eiffel Tower",
-        "Mega Construx Porsche 911 Turbo S",
-        "CaDA Space Shuttle Discovery",
-        "CaDA Medieval Castle",
-        "COBI Titanic",
+    all_products = {p.name: p for p in db.query(Product).all()}
+
+    def o(name, shop, url, price):
+        p = all_products.get(name)
+        return PriceOffer(product_id=p.id, shop_name=shop, shop_url=url, price=price) if p else None
+
+    raw = [
+        # Military
+        o("COBI Panzer IV Ausf. G",      "BrickLink",    "https://www.bricklink.com",    84.50),
+        o("COBI Panzer IV Ausf. G",      "Amazon",       "https://www.amazon.com",        87.99),
+        o("COBI Panzer IV Ausf. G",      "Smyths Toys",  "https://www.smythstoys.com",    92.00),
+
+        o("COBI Spitfire Mk.I",          "COBI Official","https://cobi.pl",               65.99),
+        o("COBI Spitfire Mk.I",          "BrickLink",    "https://www.bricklink.com",    68.50),
+        o("COBI Spitfire Mk.I",          "eBay",         "https://www.ebay.com",          72.00),
+
+        o("COBI T-34/85 Medium Tank",    "COBI Official","https://cobi.pl",               94.99),
+        o("COBI T-34/85 Medium Tank",    "Amazon",       "https://www.amazon.com",        97.50),
+        o("COBI T-34/85 Medium Tank",    "Smyths Toys",  "https://www.smythstoys.com",   102.00),
+
+        o("COBI USS Missouri Battleship","COBI Official","https://cobi.pl",              249.99),
+        o("COBI USS Missouri Battleship","BrickLink",    "https://www.bricklink.com",   239.00),
+        o("COBI USS Missouri Battleship","Amazon",       "https://www.amazon.com",       254.95),
+
+        o("COBI P-51D Mustang",          "COBI Official","https://cobi.pl",               69.99),
+        o("COBI P-51D Mustang",          "Amazon",       "https://www.amazon.com",        72.49),
+        o("COBI P-51D Mustang",          "eBay",         "https://www.ebay.com",          76.00),
+
+        # Architecture
+        o("CaDA Eiffel Tower",           "CADA Official","https://www.cada-block.com",   119.99),
+        o("CaDA Eiffel Tower",           "Amazon",       "https://www.amazon.com",       124.50),
+        o("CaDA Eiffel Tower",           "eBay",         "https://www.ebay.com",         125.00),
+
+        o("CaDA Big Ben",                "CADA Official","https://www.cada-block.com",   104.99),
+        o("CaDA Big Ben",                "AliExpress",   "https://www.aliexpress.com",    89.99),
+        o("CaDA Big Ben",                "Amazon",       "https://www.amazon.com",       109.00),
+
+        o("Oxford Colosseum",            "Oxford Toys",  "https://www.oxfordtoys.com",   144.99),
+        o("Oxford Colosseum",            "Amazon",       "https://www.amazon.com",       149.99),
+        o("Oxford Colosseum",            "eBay",         "https://www.ebay.com",         139.00),
+
+        # Vehicles
+        o("Mega Construx Porsche 911 Turbo S","Mattel Shop","https://www.mattel.com",    199.99),
+        o("Mega Construx Porsche 911 Turbo S","Amazon",   "https://www.amazon.com",      189.95),
+        o("Mega Construx Porsche 911 Turbo S","Zavvi",    "https://www.zavvi.com",       209.99),
+
+        o("CaDA Ferrari F40",            "CADA Official","https://www.cada-block.com",   169.99),
+        o("CaDA Ferrari F40",            "AliExpress",   "https://www.aliexpress.com",   149.99),
+        o("CaDA Ferrari F40",            "Amazon",       "https://www.amazon.com",       174.50),
+
+        o("Oxford Fire Engine",          "Oxford Toys",  "https://www.oxfordtoys.com",    57.99),
+        o("Oxford Fire Engine",          "Smyths Toys",  "https://www.smythstoys.com",    59.99),
+        o("Oxford Fire Engine",          "Amazon",       "https://www.amazon.com",        62.50),
+
+        o("CaDA Monster Truck",          "CADA Official","https://www.cada-block.com",    79.99),
+        o("CaDA Monster Truck",          "AliExpress",   "https://www.aliexpress.com",    69.99),
+        o("CaDA Monster Truck",          "eBay",         "https://www.ebay.com",          82.00),
+
+        o("Oxford Rally Buggy",          "Oxford Toys",  "https://www.oxfordtoys.com",    32.99),
+        o("Oxford Rally Buggy",          "Smyths Toys",  "https://www.smythstoys.com",    34.99),
+        o("Oxford Rally Buggy",          "Amazon",       "https://www.amazon.com",        36.50),
+
+        # Space
+        o("CaDA Space Shuttle Discovery","CADA Official","https://www.cada-block.com",    94.99),
+        o("CaDA Space Shuttle Discovery","AliExpress",   "https://www.aliexpress.com",    79.99),
+        o("CaDA Space Shuttle Discovery","Amazon",       "https://www.amazon.com",        98.50),
+
+        o("Mega Construx Perseverance Rover","Mattel Shop","https://www.mattel.com",     159.99),
+        o("Mega Construx Perseverance Rover","Amazon",   "https://www.amazon.com",       152.00),
+        o("Mega Construx Perseverance Rover","eBay",     "https://www.ebay.com",         164.99),
+
+        o("CaDA Saturn V Rocket",        "CADA Official","https://www.cada-block.com",   209.99),
+        o("CaDA Saturn V Rocket",        "AliExpress",   "https://www.aliexpress.com",   189.99),
+        o("CaDA Saturn V Rocket",        "Amazon",       "https://www.amazon.com",       214.50),
+
+        # City
+        o("Oxford Police Station",       "Oxford Toys",  "https://www.oxfordtoys.com",    64.99),
+        o("Oxford Police Station",       "Smyths Toys",  "https://www.smythstoys.com",    69.99),
+        o("Oxford Police Station",       "Amazon",       "https://www.amazon.com",        67.50),
+
+        o("Oxford Corner Café",          "Oxford Toys",  "https://www.oxfordtoys.com",    46.99),
+        o("Oxford Corner Café",          "Smyths Toys",  "https://www.smythstoys.com",    49.99),
+        o("Oxford Corner Café",          "Amazon",       "https://www.amazon.com",        51.00),
+
+        o("Oxford Hospital",             "Oxford Toys",  "https://www.oxfordtoys.com",    84.99),
+        o("Oxford Hospital",             "Smyths Toys",  "https://www.smythstoys.com",    89.99),
+        o("Oxford Hospital",             "Amazon",       "https://www.amazon.com",        86.50),
+
+        # Historical
+        o("Oxford Egyptian Pyramid",     "Oxford Toys",  "https://www.oxfordtoys.com",    89.99),
+        o("Oxford Egyptian Pyramid",     "Amazon",       "https://www.amazon.com",        94.99),
+        o("Oxford Egyptian Pyramid",     "eBay",         "https://www.ebay.com",          91.50),
+
+        o("CaDA Medieval Castle",        "CADA Official","https://www.cada-block.com",   179.99),
+        o("CaDA Medieval Castle",        "BrickLink",    "https://www.bricklink.com",    175.00),
+        o("CaDA Medieval Castle",        "Amazon",       "https://www.amazon.com",       185.49),
+
+        # No category
+        o("COBI Titanic",               "COBI Official","https://cobi.pl",              104.99),
+        o("COBI Titanic",               "BrickLink",    "https://www.bricklink.com",    99.50),
+        o("COBI Titanic",               "Smyths Toys",  "https://www.smythstoys.com",   109.99),
     ]
-    products = {
-        p.name: p
-        for p in db.query(Product).filter(Product.name.in_(names)).all()
-    }
 
-    offers = []
-    if p := products.get("COBI Panzer IV Ausf. G"):
-        offers += [
-            PriceOffer(product_id=p.id, shop_name="BrickLink",
-                       shop_url="https://www.bricklink.com", price=84.50),
-            PriceOffer(product_id=p.id, shop_name="Smyths Toys",
-                       shop_url="https://www.smythstoys.com", price=92.00),
-            PriceOffer(product_id=p.id, shop_name="Amazon",
-                       shop_url="https://www.amazon.com", price=87.99),
-        ]
-    if p := products.get("CaDA Eiffel Tower"):
-        offers += [
-            PriceOffer(product_id=p.id, shop_name="CADA Official",
-                       shop_url="https://www.cada-block.com", price=119.99),
-            PriceOffer(product_id=p.id, shop_name="eBay",
-                       shop_url="https://www.ebay.com", price=125.00),
-        ]
-    if p := products.get("Mega Construx Porsche 911 Turbo S"):
-        offers += [
-            PriceOffer(product_id=p.id, shop_name="Mattel Shop",
-                       shop_url="https://www.mattel.com", price=199.99),
-            PriceOffer(product_id=p.id, shop_name="Amazon",
-                       shop_url="https://www.amazon.com", price=189.95),
-            PriceOffer(product_id=p.id, shop_name="Zavvi",
-                       shop_url="https://www.zavvi.com", price=209.99),
-        ]
-    if p := products.get("CaDA Space Shuttle Discovery"):
-        offers += [
-            PriceOffer(product_id=p.id, shop_name="CADA Official",
-                       shop_url="https://www.cada-block.com", price=94.99),
-            PriceOffer(product_id=p.id, shop_name="AliExpress",
-                       shop_url="https://www.aliexpress.com", price=79.99),
-        ]
-    if p := products.get("CaDA Medieval Castle"):
-        offers += [
-            PriceOffer(product_id=p.id, shop_name="CADA Official",
-                       shop_url="https://www.cada-block.com", price=179.99),
-            PriceOffer(product_id=p.id, shop_name="BrickLink",
-                       shop_url="https://www.bricklink.com", price=175.00),
-            PriceOffer(product_id=p.id, shop_name="Amazon",
-                       shop_url="https://www.amazon.com", price=185.49),
-        ]
-    if p := products.get("COBI Titanic"):
-        offers += [
-            PriceOffer(product_id=p.id, shop_name="COBI Official",
-                       shop_url="https://cobi.pl", price=104.99),
-            PriceOffer(product_id=p.id, shop_name="Smyths Toys",
-                       shop_url="https://www.smythstoys.com", price=109.99),
-        ]
-
+    offers = [item for item in raw if item is not None]
     db.add_all(offers)
     db.commit()
     print(f"Seed complete: {len(offers)} price offers created.")
