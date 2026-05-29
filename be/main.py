@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from database import engine, Base
 import models  # noqa: F401 — registers all ORM models with SQLAlchemy Base
-from routers import auth, products
+from routers import auth, orders, products
 
 
 @asynccontextmanager
@@ -33,6 +33,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(products.router)
+app.include_router(orders.router)
 
 
 @app.get("/health", tags=["Health"])
