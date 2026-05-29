@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getProduct, getPriceOffers } from '../api/products'
+import { useCart } from '../context/CartContext'
 
 /** Full product detail page with external price comparison. */
 export default function ProductPage() {
   const { id } = useParams()
+  const { addToCart } = useCart()
   const [product, setProduct] = useState(null)
+  const [added, setAdded] = useState(false)
   const [offers, setOffers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -44,6 +47,12 @@ export default function ProductPage() {
 
   const cheapest = offers.length > 0 ? offers[0] : null
 
+  const handleAddToCart = () => {
+    addToCart(product)
+    setAdded(true)
+    setTimeout(() => setAdded(false), 2000)
+  }
+
   return (
     <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <Link to="/products" className="inline-flex items-center text-sm text-indigo-600 hover:underline mb-6 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded">
@@ -73,6 +82,15 @@ export default function ProductPage() {
           {description && (
             <p className="text-gray-600 text-sm mb-6">{description}</p>
           )}
+
+          <button
+            onClick={handleAddToCart}
+            disabled={stock_quantity === 0}
+            className="mb-4 w-full sm:w-auto bg-indigo-600 text-white text-sm px-6 py-2.5 rounded hover:bg-indigo-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+            aria-live="polite"
+          >
+            {added ? '✓ Added to cart' : stock_quantity === 0 ? 'Out of stock' : 'Add to cart'}
+          </button>
 
           <dl className="grid grid-cols-2 gap-3 text-sm mb-6">
             <div className="bg-gray-50 rounded p-3">
