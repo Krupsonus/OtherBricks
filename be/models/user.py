@@ -36,3 +36,6 @@ class User(Base):
     orders: Mapped[list["Order"]] = relationship(  # noqa: F821
         "Order", back_populates="user", cascade="all, delete-orphan"
     )
+    wish_lists: Mapped[list["WishList"]] = relationship(  # noqa: F821
+        "WishList", back_populates="user", cascade="all, delete-orphan"
+    )
