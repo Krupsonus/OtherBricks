@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getProduct, getPriceOffers } from '../api/products'
-import { addToWishlist, createWishlist, getWishlists } from '../api/wishlists'
+import { addToWishlist, createWishlist, getWishlists, removeFromWishlist } from '../api/wishlists'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 
@@ -19,7 +19,6 @@ export default function ProductPage() {
   // Wishlist picker state
   const [showPicker, setShowPicker] = useState(false)
   const [wishlists, setWishlists] = useState([])
-  const [pickerLoading, setPickerLoading] = useState(false)
   const [newListName, setNewListName] = useState('')
   const [pickerMsg, setPickerMsg] = useState('')
   const pickerRef = useRef(null)
@@ -40,20 +39,20 @@ export default function ProductPage() {
     setPickerMsg('')
     setNewListName('')
     setShowPicker(true)
-    setPickerLoading(true)
-    getWishlists()
-      .then((res) => setWishlists(res.data))
-      .catch(() => setPickerMsg('Could not load wishlists.'))
-      .finally(() => setPickerLoading(false))
   }
 
-  const handleAddToList = async (wishlistId) => {
+  const handleToggleList = async (wl) => {
+    const productId = Number(id)
+    const alreadySaved = wl.products.some((p) => p.id === productId)
     try {
-      await addToWishlist(wishlistId, id)
-      setPickerMsg('Added to wishlist!')
+      const res = alreadySaved
+        ? await removeFromWishlist(wl.id, id)
+        : await addToWishlist(wl.id, id)
+      setWishlists((prev) => prev.map((w) => (w.id === wl.id ? res.data : w)))
+      setPickerMsg(alreadySaved ? `Removed from "${wl.name}"` : `Added to "${wl.name}"!`)
       setTimeout(() => setPickerMsg(''), 2000)
     } catch {
-      setPickerMsg('Could not add to wishlist.')
+      setPickerMsg('Could not update wishlist.')
     }
   }
 
@@ -62,11 +61,11 @@ export default function ProductPage() {
     const name = newListName.trim()
     if (!name) return
     try {
-      const res = await createWishlist(name)
-      const newList = res.data
-      setWishlists((prev) => [newList, ...prev])
+      const listRes = await createWishlist(name)
+      const newList = listRes.data
+      const addRes = await addToWishlist(newList.id, id)
+      setWishlists((prev) => [addRes.data, ...prev])
       setNewListName('')
-      await addToWishlist(newList.id, id)
       setPickerMsg(`Added to "${newList.name}"!`)
       setTimeout(() => setPickerMsg(''), 2000)
     } catch {
@@ -76,16 +75,19 @@ export default function ProductPage() {
 
   useEffect(() => {
     setLoading(true)
-    Promise.all([getProduct(id), getPriceOffers(id)])
-      .then(([productRes, offersRes]) => {
+    const calls = [getProduct(id), getPriceOffers(id)]
+    if (user) calls.push(getWishlists())
+    Promise.all(calls)
+      .then(([productRes, offersRes, wishlistsRes]) => {
         setProduct(productRes.data)
         setOffers(offersRes.data)
+        if (wishlistsRes) setWishlists(wishlistsRes.data)
       })
       .catch((err) => {
         setError(err.response?.status === 404 ? 'Product not found.' : 'Failed to load product.')
       })
       .finally(() => setLoading(false))
-  }, [id])
+  }, [id, user])
 
   if (loading) {
     return (
@@ -107,6 +109,8 @@ export default function ProductPage() {
   const { name, manufacturer, description, piece_count, min_age, base_price, stock_quantity, image_url, category } = product
 
   const cheapest = offers.length > 0 ? offers[0] : null
+  const productId = Number(id)
+  const isSaved = wishlists.some((wl) => wl.products.some((p) => p.id === productId))
 
   const handleAddToCart = () => {
     addToCart(product)
@@ -158,11 +162,16 @@ export default function ProductPage() {
               <div className="relative" ref={pickerRef}>
                 <button
                   onClick={openPicker}
-                  className="w-full sm:w-auto border border-gray-300 text-gray-700 text-sm px-4 py-2.5 rounded hover:border-indigo-400 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                  className={`w-full sm:w-auto text-sm px-4 py-2.5 rounded border focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
+                    isSaved
+                      ? 'bg-indigo-50 border-indigo-400 text-indigo-700 font-medium'
+                      : 'border-gray-300 text-gray-700 hover:border-indigo-400 hover:text-indigo-600'
+                  }`}
                   aria-expanded={showPicker}
                   aria-haspopup="listbox"
+                  aria-pressed={isSaved}
                 >
-                  ♡ Save to wishlist
+                  {isSaved ? '♥ Saved to wishlist' : '♡ Save to wishlist'}
                 </button>
 
                 {showPicker && (
@@ -172,57 +181,61 @@ export default function ProductPage() {
                     aria-label="Choose wishlist"
                   >
                     <div className="p-3 border-b border-gray-100">
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Add to wishlist</p>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Save to wishlist</p>
                     </div>
 
                     {pickerMsg && (
                       <p className="px-3 py-2 text-xs text-indigo-600 font-medium" role="status">{pickerMsg}</p>
                     )}
 
-                    {pickerLoading ? (
-                      <p className="px-3 py-3 text-sm text-gray-400">Loading…</p>
-                    ) : (
-                      <>
-                        {wishlists.length > 0 && (
-                          <ul role="listbox" className="max-h-40 overflow-y-auto divide-y divide-gray-50">
-                            {wishlists.map((wl) => (
-                              <li key={wl.id}>
-                                <button
-                                  onClick={() => handleAddToList(wl.id)}
-                                  className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 focus:outline-none focus:bg-indigo-50"
-                                  role="option"
-                                >
-                                  {wl.name}
-                                  <span className="ml-1 text-xs text-gray-400">({wl.products.length})</span>
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-
-                        <form onSubmit={handleCreateAndAdd} className="p-3 border-t border-gray-100">
-                          <p className="text-xs text-gray-500 mb-1">New list</p>
-                          <div className="flex gap-1">
-                            <input
-                              type="text"
-                              value={newListName}
-                              onChange={(e) => setNewListName(e.target.value)}
-                              placeholder="List name…"
-                              maxLength={100}
-                              className="flex-1 border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                              aria-label="New wishlist name"
-                            />
-                            <button
-                              type="submit"
-                              disabled={!newListName.trim()}
-                              className="bg-indigo-600 text-white text-xs px-2 py-1 rounded hover:bg-indigo-700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            >
-                              Add
-                            </button>
-                          </div>
-                        </form>
-                      </>
+                    {wishlists.length > 0 && (
+                      <ul role="listbox" className="max-h-40 overflow-y-auto divide-y divide-gray-50">
+                        {wishlists.map((wl) => {
+                          const inList = wl.products.some((p) => p.id === productId)
+                          return (
+                            <li key={wl.id}>
+                              <button
+                                onClick={() => handleToggleList(wl)}
+                                className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-2 focus:outline-none focus:bg-indigo-50 ${
+                                  inList
+                                    ? 'text-indigo-700 bg-indigo-50 hover:bg-indigo-100'
+                                    : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-700'
+                                }`}
+                                role="option"
+                                aria-selected={inList}
+                              >
+                                <span className="truncate">{wl.name}</span>
+                                <span className="flex-shrink-0 text-xs text-gray-400">
+                                  {inList ? '✓' : `${wl.products.length}`}
+                                </span>
+                              </button>
+                            </li>
+                          )
+                        })}
+                      </ul>
                     )}
+
+                    <form onSubmit={handleCreateAndAdd} className="p-3 border-t border-gray-100">
+                      <p className="text-xs text-gray-500 mb-1">New list</p>
+                      <div className="flex gap-1">
+                        <input
+                          type="text"
+                          value={newListName}
+                          onChange={(e) => setNewListName(e.target.value)}
+                          placeholder="List name…"
+                          maxLength={100}
+                          className="flex-1 border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          aria-label="New wishlist name"
+                        />
+                        <button
+                          type="submit"
+                          disabled={!newListName.trim()}
+                          className="bg-indigo-600 text-white text-xs px-2 py-1 rounded hover:bg-indigo-700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </form>
                   </div>
                 )}
               </div>
