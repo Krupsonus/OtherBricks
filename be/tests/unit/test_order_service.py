@@ -280,3 +280,15 @@ class TestOrderSchemas:
         out = OrderItemOut.model_validate(item)
         assert out.product_id == 5
         assert out.quantity == 2
+
+    def test_order_out_accepts_string_created_at(self):
+        order = MagicMock(spec=Order)
+        order.id = 1
+        order.status = "paid"
+        order.total_amount = 50.0
+        order.shipping_address = "ul. Test 1"
+        order.payment_method = "stripe"
+        order.created_at = "2025-06-01T12:00:00+00:00"
+        order.items = []
+        out = OrderOut.model_validate(order)
+        assert "2025-06-01" in out.created_at

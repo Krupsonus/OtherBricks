@@ -140,6 +140,23 @@ class TestRegisterUser:
         assert added[0].last_name == "Smith"
 
 
+class TestUserSchemas:
+    def test_login_request_validates_email(self):
+        from schemas.user import LoginRequest
+        lr = LoginRequest(email="user@example.com", password="secret")
+        assert lr.email == "user@example.com"
+
+    def test_token_default_type_is_bearer(self):
+        from schemas.user import Token
+        t = Token(access_token="abc123")
+        assert t.token_type == "bearer"
+
+    def test_user_create_stores_fields(self):
+        from schemas.user import UserCreate
+        uc = UserCreate(email="a@b.com", password="pass", first_name="Jan", last_name="Kowalski")
+        assert uc.first_name == "Jan"
+
+
 class TestAuthenticateUser:
     def _user_with_hash(self, password: str) -> User:
         u = User()
