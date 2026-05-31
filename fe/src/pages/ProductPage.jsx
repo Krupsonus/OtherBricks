@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getProduct, getPriceOffers } from '../api/products'
+import { addToWishlist, createWishlist, getWishlists, removeFromWishlist } from '../api/wishlists'
+import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
 
 /** Full product detail page with external price comparison. */
 export default function ProductPage() {
   const { id } = useParams()
+  const { user } = useAuth()
   const { addToCart } = useCart()
   const [product, setProduct] = useState(null)
   const [added, setAdded] = useState(false)
@@ -13,18 +16,78 @@ export default function ProductPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  // Wishlist picker state
+  const [showPicker, setShowPicker] = useState(false)
+  const [wishlists, setWishlists] = useState([])
+  const [newListName, setNewListName] = useState('')
+  const [pickerMsg, setPickerMsg] = useState('')
+  const pickerRef = useRef(null)
+
+  // Close picker when clicking outside
+  useEffect(() => {
+    if (!showPicker) return
+    const handler = (e) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target)) {
+        setShowPicker(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showPicker])
+
+  const openPicker = () => {
+    setPickerMsg('')
+    setNewListName('')
+    setShowPicker(true)
+  }
+
+  const handleToggleList = async (wl) => {
+    const productId = Number(id)
+    const alreadySaved = wl.products.some((p) => p.id === productId)
+    try {
+      const res = alreadySaved
+        ? await removeFromWishlist(wl.id, id)
+        : await addToWishlist(wl.id, id)
+      setWishlists((prev) => prev.map((w) => (w.id === wl.id ? res.data : w)))
+      setPickerMsg(alreadySaved ? `Removed from "${wl.name}"` : `Added to "${wl.name}"!`)
+      setTimeout(() => setPickerMsg(''), 2000)
+    } catch {
+      setPickerMsg('Could not update wishlist.')
+    }
+  }
+
+  const handleCreateAndAdd = async (e) => {
+    e.preventDefault()
+    const name = newListName.trim()
+    if (!name) return
+    try {
+      const listRes = await createWishlist(name)
+      const newList = listRes.data
+      const addRes = await addToWishlist(newList.id, id)
+      setWishlists((prev) => [addRes.data, ...prev])
+      setNewListName('')
+      setPickerMsg(`Added to "${newList.name}"!`)
+      setTimeout(() => setPickerMsg(''), 2000)
+    } catch {
+      setPickerMsg('Could not create wishlist.')
+    }
+  }
+
   useEffect(() => {
     setLoading(true)
-    Promise.all([getProduct(id), getPriceOffers(id)])
-      .then(([productRes, offersRes]) => {
+    const calls = [getProduct(id), getPriceOffers(id)]
+    if (user) calls.push(getWishlists())
+    Promise.all(calls)
+      .then(([productRes, offersRes, wishlistsRes]) => {
         setProduct(productRes.data)
         setOffers(offersRes.data)
+        if (wishlistsRes) setWishlists(wishlistsRes.data)
       })
       .catch((err) => {
         setError(err.response?.status === 404 ? 'Product not found.' : 'Failed to load product.')
       })
       .finally(() => setLoading(false))
-  }, [id])
+  }, [id, user])
 
   if (loading) {
     return (
@@ -46,6 +109,8 @@ export default function ProductPage() {
   const { name, manufacturer, description, piece_count, min_age, base_price, stock_quantity, image_url, category } = product
 
   const cheapest = offers.length > 0 ? offers[0] : null
+  const productId = Number(id)
+  const isSaved = wishlists.some((wl) => wl.products.some((p) => p.id === productId))
 
   const handleAddToCart = () => {
     addToCart(product)
@@ -83,14 +148,99 @@ export default function ProductPage() {
             <p className="text-gray-600 text-sm mb-6">{description}</p>
           )}
 
-          <button
-            onClick={handleAddToCart}
-            disabled={stock_quantity === 0}
-            className="mb-4 w-full sm:w-auto bg-indigo-600 text-white text-sm px-6 py-2.5 rounded hover:bg-indigo-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
-            aria-live="polite"
-          >
-            {added ? '✓ Added to cart' : stock_quantity === 0 ? 'Out of stock' : 'Add to cart'}
-          </button>
+          <div className="mb-4 flex flex-wrap gap-2 items-center">
+            <button
+              onClick={handleAddToCart}
+              disabled={stock_quantity === 0}
+              className="w-full sm:w-auto bg-indigo-600 text-white text-sm px-6 py-2.5 rounded hover:bg-indigo-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+              aria-live="polite"
+            >
+              {added ? '✓ Added to cart' : stock_quantity === 0 ? 'Out of stock' : 'Add to cart'}
+            </button>
+
+            {user && (
+              <div className="relative" ref={pickerRef}>
+                <button
+                  onClick={openPicker}
+                  className={`w-full sm:w-auto text-sm px-4 py-2.5 rounded border focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
+                    isSaved
+                      ? 'bg-indigo-50 border-indigo-400 text-indigo-700 font-medium'
+                      : 'border-gray-300 text-gray-700 hover:border-indigo-400 hover:text-indigo-600'
+                  }`}
+                  aria-expanded={showPicker}
+                  aria-haspopup="listbox"
+                  aria-pressed={isSaved}
+                >
+                  {isSaved ? '♥ Saved to wishlist' : '♡ Save to wishlist'}
+                </button>
+
+                {showPicker && (
+                  <div
+                    className="absolute left-0 top-full mt-1 z-10 w-64 bg-white rounded-lg border border-gray-200 shadow-lg"
+                    role="dialog"
+                    aria-label="Choose wishlist"
+                  >
+                    <div className="p-3 border-b border-gray-100">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Save to wishlist</p>
+                    </div>
+
+                    {pickerMsg && (
+                      <p className="px-3 py-2 text-xs text-indigo-600 font-medium" role="status">{pickerMsg}</p>
+                    )}
+
+                    {wishlists.length > 0 && (
+                      <ul role="listbox" className="max-h-40 overflow-y-auto divide-y divide-gray-50">
+                        {wishlists.map((wl) => {
+                          const inList = wl.products.some((p) => p.id === productId)
+                          return (
+                            <li key={wl.id}>
+                              <button
+                                onClick={() => handleToggleList(wl)}
+                                className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-2 focus:outline-none focus:bg-indigo-50 ${
+                                  inList
+                                    ? 'text-indigo-700 bg-indigo-50 hover:bg-indigo-100'
+                                    : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-700'
+                                }`}
+                                role="option"
+                                aria-selected={inList}
+                              >
+                                <span className="truncate">{wl.name}</span>
+                                <span className="flex-shrink-0 text-xs text-gray-400">
+                                  {inList ? '✓' : `${wl.products.length}`}
+                                </span>
+                              </button>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+
+                    <form onSubmit={handleCreateAndAdd} className="p-3 border-t border-gray-100">
+                      <p className="text-xs text-gray-500 mb-1">New list</p>
+                      <div className="flex gap-1">
+                        <input
+                          type="text"
+                          value={newListName}
+                          onChange={(e) => setNewListName(e.target.value)}
+                          placeholder="List name…"
+                          maxLength={100}
+                          className="flex-1 border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          aria-label="New wishlist name"
+                        />
+                        <button
+                          type="submit"
+                          disabled={!newListName.trim()}
+                          className="bg-indigo-600 text-white text-xs px-2 py-1 rounded hover:bg-indigo-700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           <dl className="grid grid-cols-2 gap-3 text-sm mb-6">
             <div className="bg-gray-50 rounded p-3">

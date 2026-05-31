@@ -55,6 +55,12 @@ export default function Navbar() {
                 >
                   My orders
                 </Link>
+                <Link
+                  to="/wishlists"
+                  className="text-sm text-gray-600 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded px-2 py-1"
+                >
+                  Wishlists
+                </Link>
                 <span className="text-sm text-gray-600">
                   {user.first_name} {user.last_name}
                 </span>
