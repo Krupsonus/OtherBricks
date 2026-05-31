@@ -6,3 +6,4 @@ from .product import Product  # noqa: F401
 from .price_offer import PriceOffer  # noqa: F401
 from .order import Order, OrderItem  # noqa: F401
 from .wish_list import WishList, wish_list_products  # noqa: F401
+from .review import Review  # noqa: F401
