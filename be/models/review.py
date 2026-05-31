@@ -28,3 +28,9 @@ class Review(Base):
 
     user: Mapped["User"] = relationship("User")  # noqa: F821
     product: Mapped["Product"] = relationship("Product")  # noqa: F821
+
+    @property
+    def author_name(self) -> str:
+        if self.user:
+            return f"{self.user.first_name} {self.user.last_name}"
+        return ""
