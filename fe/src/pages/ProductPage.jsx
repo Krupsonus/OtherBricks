@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getProduct, getPriceOffers } from '../api/products'
+import { deleteReview, getReviews, submitReview } from '../api/reviews'
 import { addToWishlist, createWishlist, getWishlists, removeFromWishlist } from '../api/wishlists'
 import { useAuth } from '../context/AuthContext'
 import { useCart } from '../context/CartContext'
@@ -15,6 +16,15 @@ export default function ProductPage() {
   const [offers, setOffers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  // Reviews state
+  const [reviews, setReviews] = useState([])
+  const [reviewRating, setReviewRating] = useState(0)
+  const [reviewHover, setReviewHover] = useState(0)
+  const [reviewComment, setReviewComment] = useState('')
+  const [reviewSubmitting, setReviewSubmitting] = useState(false)
+  const [reviewError, setReviewError] = useState('')
+  const [reviewSuccess, setReviewSuccess] = useState('')
 
   // Wishlist picker state
   const [showPicker, setShowPicker] = useState(false)
@@ -75,12 +85,13 @@ export default function ProductPage() {
 
   useEffect(() => {
     setLoading(true)
-    const calls = [getProduct(id), getPriceOffers(id)]
+    const calls = [getProduct(id), getPriceOffers(id), getReviews(id)]
     if (user) calls.push(getWishlists())
     Promise.all(calls)
-      .then(([productRes, offersRes, wishlistsRes]) => {
+      .then(([productRes, offersRes, reviewsRes, wishlistsRes]) => {
         setProduct(productRes.data)
         setOffers(offersRes.data)
+        setReviews(reviewsRes.data)
         if (wishlistsRes) setWishlists(wishlistsRes.data)
       })
       .catch((err) => {
@@ -107,6 +118,38 @@ export default function ProductPage() {
   }
 
   const { name, manufacturer, description, piece_count, min_age, base_price, stock_quantity, image_url, category } = product
+
+  const handleSubmitReview = async (e) => {
+    e.preventDefault()
+    if (!reviewRating) return
+    setReviewSubmitting(true)
+    setReviewError('')
+    setReviewSuccess('')
+    try {
+      const res = await submitReview(id, { rating: reviewRating, comment: reviewComment || null })
+      setReviews((prev) => [res.data, ...prev])
+      setReviewRating(0)
+      setReviewComment('')
+      setReviewSuccess('Your review has been submitted!')
+    } catch (err) {
+      setReviewError(
+        err.response?.status === 409
+          ? 'You have already reviewed this product.'
+          : 'Could not submit review.'
+      )
+    } finally {
+      setReviewSubmitting(false)
+    }
+  }
+
+  const handleDeleteReview = async (reviewId) => {
+    try {
+      await deleteReview(reviewId)
+      setReviews((prev) => prev.filter((r) => r.id !== reviewId))
+    } catch {
+      setReviewError('Could not delete review.')
+    }
+  }
 
   const cheapest = offers.length > 0 ? offers[0] : null
   const productId = Number(id)
@@ -312,6 +355,115 @@ export default function ProductPage() {
           <p className="mt-2 text-xs text-gray-400 text-right">
             Prices updated: {new Date(cheapest.updated_at).toLocaleDateString()}
           </p>
+        )}
+      </section>
+
+      {/* Reviews */}
+      <section className="mt-6" aria-label="Customer reviews">
+        <h2 className="text-lg font-semibold text-gray-800 mb-3">
+          Customer reviews
+          {reviews.length > 0 && (
+            <span className="ml-2 text-sm font-normal text-gray-400">({reviews.length})</span>
+          )}
+        </h2>
+
+        {/* Submit form for logged-in users */}
+        {user && !reviews.some((r) => r.user_id === user.id) && (
+          <form
+            onSubmit={handleSubmitReview}
+            className="bg-white rounded-lg border border-gray-200 p-4 mb-4"
+            aria-label="Submit a review"
+          >
+            <p className="text-sm font-medium text-gray-700 mb-2">Leave a review</p>
+
+            {/* Star rating picker */}
+            <div className="flex gap-1 mb-3" role="group" aria-label="Rating">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setReviewRating(star)}
+                  onMouseEnter={() => setReviewHover(star)}
+                  onMouseLeave={() => setReviewHover(0)}
+                  className="text-2xl leading-none focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded"
+                  aria-label={`Rate ${star} out of 5`}
+                  aria-pressed={reviewRating === star}
+                >
+                  <span className={(reviewHover || reviewRating) >= star ? 'text-yellow-400' : 'text-gray-300'}>
+                    ★
+                  </span>
+                </button>
+              ))}
+              {reviewRating > 0 && (
+                <span className="ml-2 text-sm text-gray-500 self-center">{reviewRating}/5</span>
+              )}
+            </div>
+
+            <textarea
+              value={reviewComment}
+              onChange={(e) => setReviewComment(e.target.value)}
+              placeholder="Share your thoughts (optional)…"
+              maxLength={2000}
+              rows={3}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3"
+              aria-label="Review comment"
+            />
+
+            {reviewError && <p className="text-red-600 text-xs mb-2" role="alert">{reviewError}</p>}
+            {reviewSuccess && <p className="text-green-600 text-xs mb-2" role="status">{reviewSuccess}</p>}
+
+            <button
+              type="submit"
+              disabled={!reviewRating || reviewSubmitting}
+              className="bg-indigo-600 text-white text-sm px-4 py-2 rounded hover:bg-indigo-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              {reviewSubmitting ? 'Submitting…' : 'Submit review'}
+            </button>
+          </form>
+        )}
+
+        {reviewError && reviews.some((r) => r.user_id === user?.id) && (
+          <p className="text-red-600 text-xs mb-2" role="alert">{reviewError}</p>
+        )}
+
+        {/* Reviews list */}
+        {reviews.length === 0 ? (
+          <div className="bg-white rounded-lg border border-gray-200 py-10 text-center">
+            <p className="text-sm text-gray-400">No reviews yet. Be the first!</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-100">
+            {reviews.map((review) => (
+              <article key={review.id} className="px-5 py-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-yellow-400 text-sm tracking-tight" aria-label={`Rating: ${review.rating} out of 5`}>
+                        {'★'.repeat(review.rating)}
+                        <span className="text-gray-200">{'★'.repeat(5 - review.rating)}</span>
+                      </span>
+                      <span className="text-sm font-medium text-gray-700">{review.author_name}</span>
+                      <span className="text-xs text-gray-400">
+                        {new Date(review.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    {review.comment && (
+                      <p className="text-sm text-gray-600">{review.comment}</p>
+                    )}
+                  </div>
+                  {user && review.user_id === user.id && (
+                    <button
+                      onClick={() => handleDeleteReview(review.id)}
+                      className="flex-shrink-0 text-xs text-gray-400 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-red-400 rounded px-1"
+                      aria-label="Delete your review"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
         )}
       </section>
     </main>
