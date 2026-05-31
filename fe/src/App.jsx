@@ -8,6 +8,7 @@ import CatalogPage from './pages/CatalogPage'
 import ProductPage from './pages/ProductPage'
 import CartPage from './pages/CartPage'
 import OrdersPage from './pages/OrdersPage'
+import WishlistsPage from './pages/WishlistsPage'
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
             <Route path="/products/:id" element={<ProductPage />} />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/orders" element={<OrdersPage />} />
+            <Route path="/wishlists" element={<WishlistsPage />} />
           </Routes>
         </div>
       </CartProvider>
