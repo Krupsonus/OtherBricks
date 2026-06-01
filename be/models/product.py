@@ -1,4 +1,6 @@
-from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
+from datetime import datetime
+
+from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -24,6 +26,9 @@ class Product(Base):
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     category_id: Mapped[int | None] = mapped_column(
         ForeignKey("categories.id"), nullable=True, index=True
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), onupdate=func.now(), nullable=True
     )
 
     category: Mapped["Category | None"] = relationship("Category", back_populates="products")
