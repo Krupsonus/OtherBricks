@@ -8,6 +8,7 @@ import CatalogPage from './pages/CatalogPage'
 import ProductPage from './pages/ProductPage'
 import CartPage from './pages/CartPage'
 import OrdersPage from './pages/OrdersPage'
+import AlertsPage from './pages/AlertsPage'
 import WishlistsPage from './pages/WishlistsPage'
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
             <Route path="/cart" element={<CartPage />} />
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/wishlists" element={<WishlistsPage />} />
+            <Route path="/alerts" element={<AlertsPage />} />
           </Routes>
         </div>
       </CartProvider>

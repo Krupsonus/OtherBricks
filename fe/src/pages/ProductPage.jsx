@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { createAlert, deleteAlert, getAlerts } from '../api/alerts'
 import { getProduct, getPriceOffers } from '../api/products'
 import { deleteReview, getReviews, submitReview } from '../api/reviews'
 import { addToWishlist, createWishlist, getWishlists, removeFromWishlist } from '../api/wishlists'
@@ -16,6 +17,12 @@ export default function ProductPage() {
   const [offers, setOffers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  // Price alert state
+  const [alert, setAlert] = useState(null)   // current alert for this product (or null)
+  const [alertInput, setAlertInput] = useState('')
+  const [showAlertForm, setShowAlertForm] = useState(false)
+  const [alertError, setAlertError] = useState('')
 
   // Reviews state
   const [reviews, setReviews] = useState([])
@@ -86,13 +93,17 @@ export default function ProductPage() {
   useEffect(() => {
     setLoading(true)
     const calls = [getProduct(id), getPriceOffers(id), getReviews(id)]
-    if (user) calls.push(getWishlists())
+    if (user) calls.push(getWishlists(), getAlerts())
     Promise.all(calls)
-      .then(([productRes, offersRes, reviewsRes, wishlistsRes]) => {
+      .then(([productRes, offersRes, reviewsRes, wishlistsRes, alertsRes]) => {
         setProduct(productRes.data)
         setOffers(offersRes.data)
         setReviews(reviewsRes.data)
         if (wishlistsRes) setWishlists(wishlistsRes.data)
+        if (alertsRes) {
+          const existing = alertsRes.data.find((a) => a.product_id === Number(id))
+          setAlert(existing || null)
+        }
       })
       .catch((err) => {
         setError(err.response?.status === 404 ? 'Product not found.' : 'Failed to load product.')
@@ -118,6 +129,34 @@ export default function ProductPage() {
   }
 
   const { name, manufacturer, description, piece_count, min_age, base_price, stock_quantity, image_url, category } = product
+
+  const handleCreateAlert = async (e) => {
+    e.preventDefault()
+    const price = parseFloat(alertInput)
+    if (!price || price <= 0) return
+    setAlertError('')
+    try {
+      const res = await createAlert(Number(id), price)
+      setAlert(res.data)
+      setShowAlertForm(false)
+      setAlertInput('')
+    } catch (err) {
+      setAlertError(
+        err.response?.status === 409
+          ? 'Alert already set for this product.'
+          : 'Could not set alert.'
+      )
+    }
+  }
+
+  const handleDeleteAlert = async () => {
+    try {
+      await deleteAlert(alert.id)
+      setAlert(null)
+    } catch {
+      setAlertError('Could not delete alert.')
+    }
+  }
 
   const handleSubmitReview = async (e) => {
     e.preventDefault()
@@ -307,6 +346,82 @@ export default function ProductPage() {
           </dl>
         </div>
       </article>
+
+      {/* Price alert widget */}
+      {user && (
+        <div className="mt-4">
+          {alert ? (
+            <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border text-sm ${
+              alert.is_triggered
+                ? 'bg-green-50 border-green-300 text-green-800'
+                : 'bg-gray-50 border-gray-200 text-gray-700'
+            }`}>
+              <span className="text-base">{alert.is_triggered ? '🔔' : '🔕'}</span>
+              <span className="flex-1">
+                {alert.is_triggered
+                  ? <>Price alert triggered! Best offer: <strong>${Number(alert.best_offer_price).toFixed(2)}</strong> ≤ your target <strong>${Number(alert.target_price).toFixed(2)}</strong></>
+                  : <>Watching — alert set at <strong>${Number(alert.target_price).toFixed(2)}</strong>
+                    {alert.best_offer_price != null && <> · Best now: ${Number(alert.best_offer_price).toFixed(2)}</>}
+                  </>
+                }
+              </span>
+              <button
+                onClick={handleDeleteAlert}
+                className="text-xs text-gray-400 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-red-400 rounded px-1"
+                aria-label="Remove price alert"
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <div>
+              {!showAlertForm ? (
+                <button
+                  onClick={() => { setShowAlertForm(true); setAlertError('') }}
+                  className="text-sm text-indigo-600 hover:text-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded"
+                >
+                  🔔 Set a price alert
+                </button>
+              ) : (
+                <form onSubmit={handleCreateAlert} className="flex items-center gap-2 flex-wrap">
+                  <label className="text-sm text-gray-600" htmlFor="alert-price">
+                    Alert me when price drops to:
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm text-gray-500">$</span>
+                    <input
+                      id="alert-price"
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={alertInput}
+                      onChange={(e) => setAlertInput(e.target.value)}
+                      placeholder="0.00"
+                      className="w-24 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      autoFocus
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={!alertInput || parseFloat(alertInput) <= 0}
+                    className="bg-indigo-600 text-white text-sm px-3 py-1 rounded hover:bg-indigo-700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    Set alert
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowAlertForm(false); setAlertError('') }}
+                    className="text-sm text-gray-400 hover:text-gray-600 focus:outline-none"
+                  >
+                    Cancel
+                  </button>
+                  {alertError && <p className="w-full text-xs text-red-600" role="alert">{alertError}</p>}
+                </form>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Price comparison */}
       <section className="mt-6" aria-label="Price comparison">
