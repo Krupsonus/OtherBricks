@@ -108,11 +108,14 @@ def run_aggregation(db: Session) -> dict:
     db.flush()
 
     notifications = check_and_notify_alerts(db, updated_ids)
+    db.flush()   # assign IDs before commit so we can read them
+    notification_ids = [n.id for n in notifications]
     db.commit()
 
     return {
         "products_processed": len(products),
         "offers_updated": offers_updated,
         "alerts_triggered": len(notifications),
+        "notification_ids": notification_ids,
         "ran_at": datetime.now(timezone.utc).isoformat(),
     }
