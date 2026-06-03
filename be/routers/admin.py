@@ -5,8 +5,10 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from dependencies import require_admin
+from models.notification import Notification
 from models.user import User
 from schemas.admin import AdminOrderOut, ProductCreateIn, ProductUpdateIn, UserAdminOut
+from schemas.notification import NotificationOut
 from schemas.product import ProductOut
 from services.admin_service import (
     create_product,
@@ -87,6 +89,30 @@ def activate_user(
 ):
     """Activate a user account. Returns 404 if not found."""
     return set_user_active(db, user_id, True)
+
+
+@router.post("/aggregate", status_code=status.HTTP_202_ACCEPTED)
+def trigger_aggregation(
+    _: User = Depends(require_admin),
+):
+    """Queue the price aggregation Celery task. Returns the task ID."""
+    from tasks.price_aggregator import aggregate_prices
+    task = aggregate_prices.delay()
+    return {"task_id": task.id, "status": "queued"}
+
+
+@router.get("/notifications", response_model=list[NotificationOut])
+def list_notifications(
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """List the 100 most recent price alert notifications."""
+    return (
+        db.query(Notification)
+        .order_by(Notification.created_at.desc())
+        .limit(100)
+        .all()
+    )
 
 
 @router.put("/users/{user_id}/deactivate", response_model=UserAdminOut)
