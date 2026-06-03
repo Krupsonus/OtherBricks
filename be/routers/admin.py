@@ -14,6 +14,7 @@ from services.admin_service import (
     get_all_orders,
     get_all_products,
     get_all_users,
+    set_user_active,
     update_product,
 )
 
@@ -76,3 +77,23 @@ def list_users(
 ):
     """List all registered users."""
     return get_all_users(db)
+
+
+@router.put("/users/{user_id}/activate", response_model=UserAdminOut)
+def activate_user(
+    user_id: int,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Activate a user account. Returns 404 if not found."""
+    return set_user_active(db, user_id, True)
+
+
+@router.put("/users/{user_id}/deactivate", response_model=UserAdminOut)
+def deactivate_user(
+    user_id: int,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Deactivate a user account. Returns 404 if not found, 400 if target is admin."""
+    return set_user_active(db, user_id, False)

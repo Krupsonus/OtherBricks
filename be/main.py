@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from database import engine, Base
 import models  # noqa: F401 — registers all ORM models with SQLAlchemy Base
-from routers import admin, alerts, auth, orders, products, reviews, wishlists
+from routers import admin, alerts, auth, orders, products, reviews, users, wishlists
 
 
 @asynccontextmanager
@@ -37,6 +37,7 @@ app.include_router(orders.router)
 app.include_router(wishlists.router)
 app.include_router(reviews.router)
 app.include_router(alerts.router)
+app.include_router(users.router)
 app.include_router(admin.router)
 
 
