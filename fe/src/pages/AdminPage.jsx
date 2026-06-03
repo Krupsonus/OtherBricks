@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
+  adminActivateUser,
   adminCreateProduct,
+  adminDeactivateUser,
   adminDeleteProduct,
   adminGetOrders,
   adminGetProducts,
@@ -46,6 +48,7 @@ export default function AdminPage() {
   // Users state
   const [users, setUsers] = useState([])
   const [usrLoading, setUsrLoading] = useState(false)
+  const [usrError, setUsrError] = useState('')
 
   useEffect(() => {
     if (!user) { navigate('/login'); return }
@@ -143,6 +146,18 @@ export default function AdminPage() {
       setEditId(null)
     } catch (err) {
       setEditError(err.response?.data?.detail || 'Could not update product.')
+    }
+  }
+
+  const handleToggleActive = async (u) => {
+    setUsrError('')
+    try {
+      const res = u.is_active
+        ? await adminDeactivateUser(u.id)
+        : await adminActivateUser(u.id)
+      setUsers((prev) => prev.map((x) => (x.id === u.id ? res.data : x)))
+    } catch (err) {
+      setUsrError(err.response?.data?.detail || 'Could not update user status.')
     }
   }
 
@@ -379,6 +394,7 @@ export default function AdminPage() {
       {/* ── Users tab ────────────────────────────────────────────────────── */}
       {tab === 'users' && (
         <div>
+          {usrError && <p className="text-red-600 text-sm mb-3" role="alert">{usrError}</p>}
           {usrLoading ? (
             <p className="text-gray-500 text-sm">Loading…</p>
           ) : (
@@ -392,6 +408,7 @@ export default function AdminPage() {
                     <th className="px-3 py-2 font-medium">Role</th>
                     <th className="px-3 py-2 font-medium">Active</th>
                     <th className="px-3 py-2 font-medium">Registered</th>
+                    <th className="px-3 py-2 font-medium"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -411,6 +428,20 @@ export default function AdminPage() {
                         </span>
                       </td>
                       <td className="px-3 py-2 text-gray-400 text-xs">{new Date(u.created_at).toLocaleDateString()}</td>
+                      <td className="px-3 py-2">
+                        {u.role !== 'admin' && (
+                          <button
+                            onClick={() => handleToggleActive(u)}
+                            className={`text-xs px-2 py-1 rounded focus:outline-none focus:ring-1 ${
+                              u.is_active
+                                ? 'text-red-500 hover:text-red-700 focus:ring-red-400'
+                                : 'text-green-600 hover:text-green-800 focus:ring-green-400'
+                            }`}
+                          >
+                            {u.is_active ? 'Block' : 'Unblock'}
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
