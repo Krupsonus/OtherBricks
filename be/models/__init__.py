@@ -8,3 +8,4 @@ from .order import Order, OrderItem  # noqa: F401
 from .wish_list import WishList, wish_list_products  # noqa: F401
 from .review import Review  # noqa: F401
 from .price_alert import PriceAlert  # noqa: F401
+from .notification import Notification  # noqa: F401
