@@ -56,6 +56,19 @@ def delete_product(db: Session, product_id: int) -> None:
     db.commit()
 
 
+def set_user_active(db: Session, user_id: int, is_active: bool) -> User:
+    """Activate or deactivate a user account. Raises 404 if not found, 400 if deactivating admin."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+    if not is_active and user.role.value == "admin":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot deactivate an admin account.")
+    user.is_active = is_active
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 def get_all_orders(db: Session) -> list[Order]:
     """Return all orders across all users, newest first."""
     return (

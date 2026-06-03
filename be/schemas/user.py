@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from models.user import UserRole
 
@@ -11,6 +11,14 @@ class UserCreate(BaseModel):
     password: str
     first_name: str
     last_name: str
+
+
+class UserUpdateIn(BaseModel):
+    """Partial update of the authenticated user's own profile."""
+    first_name: str | None = Field(default=None, min_length=1, max_length=100)
+    last_name: str | None = Field(default=None, min_length=1, max_length=100)
+    email: EmailStr | None = None
+    password: str | None = Field(default=None, min_length=8)
 
 
 class UserOut(BaseModel):
