@@ -10,6 +10,7 @@ import CartPage from './pages/CartPage'
 import OrdersPage from './pages/OrdersPage'
 import AlertsPage from './pages/AlertsPage'
 import WishlistsPage from './pages/WishlistsPage'
+import AdminPage from './pages/AdminPage'
 
 function App() {
   return (
@@ -39,6 +40,7 @@ function App() {
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/wishlists" element={<WishlistsPage />} />
             <Route path="/alerts" element={<AlertsPage />} />
+            <Route path="/admin" element={<AdminPage />} />
           </Routes>
         </div>
       </CartProvider>
