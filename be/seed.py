@@ -37,6 +37,26 @@ def seed_admin(db: Session) -> None:
     print("Seed complete: admin@otherbricks.com created.")
 
 
+def seed_regular_user(db: Session) -> None:
+    from models.user import User, UserRole
+
+    if db.query(User).filter(User.email == "user@otherbricks.com").first():
+        print("Regular user already exists — skipping.")
+        return
+
+    user = User(
+        email="user@otherbricks.com",
+        password_hash=pwd_context.hash("user123"),
+        first_name="Jan",
+        last_name="Kowalski",
+        role=UserRole.user,
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+    print("Seed complete: user@otherbricks.com created.")
+
+
 def seed_catalog(db: Session) -> None:
     from models.category import Category
     from models.product import Product
@@ -329,6 +349,7 @@ def seed_price_offers(db: Session) -> None:
 
 def seed(db: Session) -> None:
     seed_admin(db)
+    seed_regular_user(db)
     seed_catalog(db)
     seed_price_offers(db)
 
