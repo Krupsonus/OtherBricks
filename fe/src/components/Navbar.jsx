@@ -55,6 +55,14 @@ export default function Navbar() {
                 >
                   My orders
                 </Link>
+                {user.role === 'admin' && (
+                  <Link
+                    to="/admin"
+                    className="text-sm font-medium text-indigo-600 hover:text-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded px-2 py-1"
+                  >
+                    Admin
+                  </Link>
+                )}
                 <Link
                   to="/wishlists"
                   className="text-sm text-gray-600 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded px-2 py-1"
