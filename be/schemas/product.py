@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class CategoryOut(BaseModel):
@@ -27,6 +27,14 @@ class ProductOut(BaseModel):
     image_url: str | None
     category_id: int | None
     category: CategoryOut | None
+    updated_at: str | None = None
+
+    @field_validator("updated_at", mode="before")
+    @classmethod
+    def stringify_updated_at(cls, v: datetime | str | None) -> str | None:
+        if isinstance(v, datetime):
+            return v.isoformat()
+        return str(v) if v is not None else None
 
 
 class ProductListResponse(BaseModel):
