@@ -7,3 +7,5 @@ export const adminDeleteProduct = (id) => apiClient.delete(`/admin/products/${id
 
 export const adminGetOrders = () => apiClient.get('/admin/orders')
 export const adminGetUsers = () => apiClient.get('/admin/users')
+export const adminActivateUser = (id) => apiClient.put(`/admin/users/${id}/activate`)
+export const adminDeactivateUser = (id) => apiClient.put(`/admin/users/${id}/deactivate`)

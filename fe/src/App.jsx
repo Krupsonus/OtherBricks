@@ -11,6 +11,7 @@ import OrdersPage from './pages/OrdersPage'
 import AlertsPage from './pages/AlertsPage'
 import WishlistsPage from './pages/WishlistsPage'
 import AdminPage from './pages/AdminPage'
+import ProfilePage from './pages/ProfilePage'
 
 function App() {
   return (
@@ -41,6 +42,7 @@ function App() {
             <Route path="/wishlists" element={<WishlistsPage />} />
             <Route path="/alerts" element={<AlertsPage />} />
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
           </Routes>
         </div>
       </CartProvider>
