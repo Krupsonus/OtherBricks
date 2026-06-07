@@ -5,9 +5,11 @@ import {
   adminCreateProduct,
   adminDeactivateUser,
   adminDeleteProduct,
+  adminGetNotifications,
   adminGetOrders,
   adminGetProducts,
   adminGetUsers,
+  adminTriggerAggregation,
   adminUpdateProduct,
 } from '../api/admin'
 import { useAuth } from '../context/AuthContext'
@@ -50,6 +52,13 @@ export default function AdminPage() {
   const [usrLoading, setUsrLoading] = useState(false)
   const [usrError, setUsrError] = useState('')
 
+  // Aggregator state
+  const [notifications, setNotifications] = useState([])
+  const [notifLoading, setNotifLoading] = useState(false)
+  const [aggRunning, setAggRunning] = useState(false)
+  const [aggResult, setAggResult] = useState(null)
+  const [aggError, setAggError] = useState('')
+
   useEffect(() => {
     if (!user) { navigate('/login'); return }
     if (user.role !== 'admin') { navigate('/'); return }
@@ -60,6 +69,7 @@ export default function AdminPage() {
     if (tab === 'products' && products.length === 0) loadProducts()
     if (tab === 'orders' && orders.length === 0) loadOrders()
     if (tab === 'users' && users.length === 0) loadUsers()
+    if (tab === 'aggregator' && notifications.length === 0) loadNotifications()
   }, [tab, user])
 
   const loadProducts = () => {
@@ -82,6 +92,31 @@ export default function AdminPage() {
     adminGetUsers()
       .then((r) => setUsers(r.data))
       .finally(() => setUsrLoading(false))
+  }
+
+  const loadNotifications = () => {
+    setNotifLoading(true)
+    adminGetNotifications()
+      .then((r) => setNotifications(r.data))
+      .finally(() => setNotifLoading(false))
+  }
+
+  const handleRunAggregator = async () => {
+    setAggRunning(true)
+    setAggResult(null)
+    setAggError('')
+    try {
+      const res = await adminTriggerAggregation()
+      setAggResult(res.data)
+      // Refresh notifications after a short delay to pick up new ones
+      setTimeout(() => {
+        adminGetNotifications().then((r) => setNotifications(r.data))
+      }, 2000)
+    } catch (err) {
+      setAggError(err.response?.data?.detail || 'Failed to trigger aggregation.')
+    } finally {
+      setAggRunning(false)
+    }
   }
 
   // ── Add product ──────────────────────────────────────────────────────────
@@ -244,6 +279,7 @@ export default function AdminPage() {
         {tabBtn('products', `Products (${products.length})`)}
         {tabBtn('orders', `Orders (${orders.length})`)}
         {tabBtn('users', `Users (${users.length})`)}
+        {tabBtn('aggregator', 'Aggregator')}
       </div>
 
       {/* ── Products tab ─────────────────────────────────────────────────── */}
@@ -449,6 +485,89 @@ export default function AdminPage() {
               {users.length === 0 && (
                 <p className="text-center text-gray-400 text-sm py-8">No users yet.</p>
               )}
+            </div>
+          )}
+        </div>
+      )}
+      {/* ── Aggregator tab ───────────────────────────────────────────────── */}
+      {tab === 'aggregator' && (
+        <div>
+          {/* Run button */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 shadow-sm">
+            <h2 className="text-base font-semibold text-gray-800 mb-1">Price Aggregator</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Triggers a Celery task that fetches mock prices from three simulated external shops,
+              updates all price offers, and fires notifications for any triggered price alerts.
+            </p>
+            <button
+              onClick={handleRunAggregator}
+              disabled={aggRunning}
+              className="bg-indigo-600 text-white text-sm px-5 py-2 rounded hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+            >
+              {aggRunning ? 'Queuing…' : 'Run aggregator now'}
+            </button>
+
+            {aggError && (
+              <p className="mt-3 text-red-600 text-sm" role="alert">{aggError}</p>
+            )}
+            {aggResult && (
+              <div className="mt-4 bg-green-50 border border-green-200 rounded p-3 text-sm text-green-800">
+                <p className="font-medium mb-1">Task queued successfully</p>
+                <p>Task ID: <span className="font-mono text-xs">{aggResult.task_id}</span></p>
+                <p className="text-xs text-green-600 mt-1">
+                  Notifications list below refreshes automatically after 2 s.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Notifications list */}
+          <h2 className="text-base font-semibold text-gray-800 mb-3">
+            Recent notifications ({notifications.length})
+          </h2>
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={loadNotifications}
+              className="text-xs text-indigo-600 hover:text-indigo-800 focus:outline-none"
+            >
+              Refresh
+            </button>
+          </div>
+
+          {notifLoading ? (
+            <p className="text-gray-500 text-sm">Loading…</p>
+          ) : notifications.length === 0 ? (
+            <p className="text-center text-gray-400 text-sm py-8">No notifications yet. Run the aggregator to generate some.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wide">
+                    <th className="px-3 py-2 font-medium">ID</th>
+                    <th className="px-3 py-2 font-medium">User</th>
+                    <th className="px-3 py-2 font-medium">Message</th>
+                    <th className="px-3 py-2 font-medium">Sent</th>
+                    <th className="px-3 py-2 font-medium">Created</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {notifications.map((n) => (
+                    <tr key={n.id} className="hover:bg-gray-50">
+                      <td className="px-3 py-2 text-gray-400">{n.id}</td>
+                      <td className="px-3 py-2 text-gray-600">{n.user_id}</td>
+                      <td className="px-3 py-2 text-gray-800 max-w-md">{n.message}</td>
+                      <td className="px-3 py-2">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${n.is_sent ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                          {n.is_sent ? 'Sent' : 'Pending'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-gray-400 text-xs">
+                        {new Date(n.created_at).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
